@@ -4,9 +4,9 @@ const { signToken } = require('../utils/auth');
 
 const resolvers = {
   Query: {
-    me: async (_, args, { user }) => {
-      if (user) {
-        const userdata = await User.findOne({ _id: user._id });
+    me: async (parent, args, context) => {
+      if (context.user) {
+        const userdata = await User.findOne({ _id: context.user._id });
 
         return userdata;
       }
@@ -15,7 +15,7 @@ const resolvers = {
   },
 
   Mutation: {
-    login: async (_, { email, password }) => {
+    login: async (parent, { email, password }) => {
       const user = await User.findOne({ email });
 
       if (!user) {
@@ -25,24 +25,25 @@ const resolvers = {
       const correctPw = await user.isCorrectPassword(password);
 
       if (!correctPw) {
-        throw new AuthenticationError('Incorrect credentials');
+        throw new AuthenticationError('Password is incorrect.');
       }
 
       const token = signToken(user);
 
       return { token, user };
     },
-    addUser: async (_, { username, email, password }) => {
+    addUser: async (parent, { username, email, password }) => {
+      console.log({ username, email, password })
       const user = await User.create({ username, email, password });
       const token = signToken(user);
 
       return { token, user };
     },
-    saveBook: async (_, { savedBooks }, { user }) => {
-      if (user) {
+    saveBook: async (parent, args, context) => {
+      if (context.user) {
         const updateUser = await User.findOneAndUpdate(
-          { _id: user._id },
-          { $addToSet: { savedBooks: savedBooks } },
+          { _id: context.user._id },
+          { $addToSet: { savedBooks: args } },
           { new: true, runValidators: true }
         );
 
@@ -51,10 +52,10 @@ const resolvers = {
 
       throw new AuthenticationError('You are not logged in...');
     },
-    removeBook: async (_, { bookId }, { user }) => {
-      if (user) {
+    removeBook: async (parent, { bookId }, context) => {
+      if (context.user) {
         const updateUser = await User.findOneAndUpdate(
-          { _id: user._id },
+          { _id: context.user._id },
           { $pull: { savedBooks: { bookId: bookId } } },
           { new: true, runValidators: true }
         );
